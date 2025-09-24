@@ -1,0 +1,92 @@
+name: Simple News Bot
+
+on:
+  schedule:
+    # Run daily at 9:00 AM UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:  # Manual trigger
+    inputs:
+      keyword:
+        description: 'News search keyword'
+        required: false
+        default: 'artificial intelligence'
+      style:
+        description: 'Writing style'
+        required: false
+        default: 'professional'
+        type: choice
+        options:
+          - professional
+          - casual
+          - academic
+      category:
+        description: 'News category'
+        required: false
+        default: 'technology'
+        type: choice
+        options:
+          - technology
+          - business
+          - health
+          - science
+          - sports
+          - politics
+
+jobs:
+  generate-news:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install google-generativeai eventregistry
+        
+    - name: Run news bot
+      env:
+        EVENTREGISTRY_API_KEY: ${{ secrets.EVENTREGISTRY_API_KEY }}
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        INPUT_KEYWORD: ${{ inputs.keyword || 'artificial intelligence' }}
+        INPUT_STYLE: ${{ inputs.style || 'professional' }}
+        INPUT_CATEGORY: ${{ inputs.category || 'technology' }}
+      run: python examples/news_bot_action.py
+      
+    - name: Upload generated articles
+      uses: actions/upload-artifact@v3
+      with:
+        name: daily-news-${{ github.run_number }}
+        path: |
+          *.md
+          *.json
+        retention-days: 30
+        
+    - name: Create Pull Request with news articles (optional)
+      if: github.event_name == 'schedule'
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "🤖 Daily news articles - ${{ github.run_number }}"
+        title: "Daily News Update - ${{ github.run_number }}"
+        body: |
+          ## 📰 Daily News Bot Results
+          
+          **Run Date:** ${{ github.run_date }}
+          **Keyword:** ${{ inputs.keyword || 'artificial intelligence' }}
+          **Category:** ${{ inputs.category || 'technology' }}
+          **Style:** ${{ inputs.style || 'professional' }}
+          
+          This PR contains automatically generated news articles using:
+          - 🔍 EventRegistry API for news fetching
+          - 🤖 Google Gemini for article generation
+          
+          Generated files are available in the artifacts section of the workflow run.
+        branch: news-bot-update-${{ github.run_number }}
+        delete-branch: true
