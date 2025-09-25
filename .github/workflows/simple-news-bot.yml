@@ -68,25 +68,152 @@ jobs:
           *.json
         retention-days: 30
         
-    - name: Create Pull Request with news articles (optional)
-      if: github.event_name == 'schedule'
-      uses: peter-evans/create-pull-request@v6
+    - name: Create summary for GitHub Issue
+      id: create-summary
+      run: |
+        echo "Creating issue summary..."
+        
+        # Count generated files
+        MD_COUNT=$(ls *.md 2>/dev/null | wc -l || echo 0)
+        JSON_COUNT=$(ls *.json 2>/dev/null | wc -l || echo 0)
+        
+        # Get run details
+        KEYWORD="${{ inputs.keyword || 'artificial intelligence' }}"
+        CATEGORY="${{ inputs.category || 'technology' }}"
+        STYLE="${{ inputs.style || 'professional' }}"
+        RUN_DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
+        
+        # Create issue title
+        if [ "${{ github.event_name }}" = "schedule" ]; then
+          ISSUE_TITLE="📰 Daily News Digest - $RUN_DATE"
+        else
+          ISSUE_TITLE="📰 News Articles: $KEYWORD - $RUN_DATE"
+        fi
+        
+        # Start building issue body
+        cat > issue_body.md << ISSUE_EOF
+        # 🤖 News Bot Results
+        
+        **Generated:** $RUN_DATE  
+        **Keyword:** \`$KEYWORD\`  
+        **Category:** \`$CATEGORY\`  
+        **Style:** \`$STYLE\`  
+        **Articles Created:** $MD_COUNT  
+        **Run #:** ${{ github.run_number }}
+        
+        ---
+        
+        ## 📋 Article Previews
+        
+        ISSUE_EOF
+        
+        # Add previews of each markdown file
+        if [ $MD_COUNT -gt 0 ]; then
+          for file in *.md; do
+            if [ -f "$file" ]; then
+              echo "### 📰 $(basename "$file" .md)" >> issue_body.md
+              echo "" >> issue_body.md
+              
+              # Extract first few lines as preview
+              head -20 "$file" | grep -v "^#" | grep -v "^\*\*" | grep -v "^---" | head -3 >> issue_body.md
+              echo "" >> issue_body.md
+              echo "**[📄 Full Article Available in Artifacts]**" >> issue_body.md
+              echo "" >> issue_body.md
+            fi
+          done
+        else
+          echo "No articles were generated in this run." >> issue_body.md
+        fi
+        
+        # Add download links and summary
+        cat >> issue_body.md << ISSUE_EOF
+        
+        ---
+        
+        ## 📥 Download Full Articles
+        
+        All complete articles and metadata are available in the **Artifacts** section of this workflow run:
+        
+        🔗 **[Download Artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})**
+        
+        ### 📁 Available Files:
+        - **Markdown Articles:** $MD_COUNT files (`.md`)
+        - **JSON Metadata:** $JSON_COUNT files (`.json`)
+        
+        ---
+        
+        ## 🔄 Automation Info
+        
+        - **Trigger:** ${{ github.event_name }}
+        - **Workflow:** Simple News Bot
+        - **Repository:** ${{ github.repository }}
+        - **Branch:** ${{ github.ref_name }}
+        
+        > This issue was automatically created by the News Bot workflow.  
+        > 🤖 **Powered by:** EventRegistry API + Google Gemini AI
+        
+        ISSUE_EOF
+        
+        # Set outputs for next step
+        echo "issue_title=$ISSUE_TITLE" >> $GITHUB_OUTPUT
+        echo "articles_count=$MD_COUNT" >> $GITHUB_OUTPUT
+        
+    - name: Create GitHub Issue with Article Previews
+      uses: actions/github-script@v7
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: "🤖 Daily news articles - ${{ github.run_number }}"
-        title: "Daily News Update - ${{ github.run_number }}"
-        body: |
-          ## 📰 Daily News Bot Results
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const fs = require('fs');
+          const path = require('path');
           
-          **Run Date:** ${{ github.run_date }}
-          **Keyword:** ${{ inputs.keyword || 'artificial intelligence' }}
-          **Category:** ${{ inputs.category || 'technology' }}
-          **Style:** ${{ inputs.style || 'professional' }}
+          // Read the issue body we created
+          const issueBody = fs.readFileSync('issue_body.md', 'utf8');
+          const issueTitle = '${{ steps.create-summary.outputs.issue_title }}';
+          const articlesCount = '${{ steps.create-summary.outputs.articles_count }}';
           
-          This PR contains automatically generated news articles using:
-          - 🔍 EventRegistry API for news fetching
-          - 🤖 Google Gemini for article generation
+          // Determine labels based on context
+          const labels = ['news-bot', 'automated'];
           
-          Generated files are available in the artifacts section of the workflow run.
-        branch: news-bot-update-${{ github.run_number }}
-        delete-branch: true
+          // Add category-specific label
+          const category = '${{ inputs.category || 'technology' }}';
+          labels.push(`category:${category}`);
+          
+          // Add trigger-specific label
+          if ('${{ github.event_name }}' === 'schedule') {
+            labels.push('daily-digest');
+          } else {
+            labels.push('manual-run');
+          }
+          
+          // Add status label based on results
+          if (parseInt(articlesCount) > 0) {
+            labels.push('success');
+          } else {
+            labels.push('no-articles');
+          }
+          
+          // Create the issue
+          const issue = await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: issueTitle,
+            body: issueBody,
+            labels: labels
+          });
+          
+          console.log(`✅ Created issue #${issue.data.number}: ${issueTitle}`);
+          console.log(`🔗 Issue URL: ${issue.data.html_url}`);
+          
+          // Add a comment with quick stats
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: issue.data.number,
+            body: `🎯 **Quick Stats:**
+            - Articles generated: ${articlesCount}
+            - Keyword: \`${{ inputs.keyword || 'artificial intelligence' }}\`
+            - Category: \`${{ inputs.category || 'technology' }}\`
+            - Style: \`${{ inputs.style || 'professional' }}\`
+            
+            📊 Workflow run: [${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+          });
