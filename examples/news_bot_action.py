@@ -253,7 +253,7 @@ def main():
     
     # 1. Keyword-based article
     if keyword:
-        print(f"\\n📰 Fetching news for: {keyword}")
+        print(f"\n📰 Fetching news for: {keyword}")
         news_articles = news_fetcher.fetch_latest_news(keyword=keyword, max_articles=2)
         
         for i, news in enumerate(news_articles):
@@ -274,7 +274,7 @@ def main():
             time.sleep(2)  # Rate limiting
     
     # 2. Category-based articles
-    print(f"\\n📊 Fetching news for category: {category}")
+    print(f"\n📊 Fetching news for category: {category}")
     category_news = news_fetcher.fetch_latest_news(category=category, max_articles=3)
     
     category_articles = []
@@ -316,7 +316,7 @@ def main():
         except Exception as e:
             print(f"❌ Error saving summary: {e}")
     
-    print(f"\\n🎉 News bot completed!")
+    print(f"\n🎉 News bot completed!")
     print(f"📊 Generated {len(generated_files)} articles")
     print(f"📁 Files: {', '.join(generated_files)}")
 
