@@ -91,35 +91,7 @@ def generate_article_with_gemini(api_key: str, news_data: Dict) -> Dict:
         import google.generativeai as genai
         
         genai.configure(api_key=api_key)
-        
-        # Try different model names that might be available
-        model_names = [
-            'gemini-1.5-flash',
-            'gemini-1.5-flash-latest', 
-            'gemini-pro',
-            'gemini-1.5-pro',
-            'models/gemini-1.5-flash',
-            'models/gemini-pro',
-            'gemini-1.0-pro'
-        ]
-        
-        model = None
-        for model_name in model_names:
-            try:
-                model = genai.GenerativeModel(model_name)
-                print(f"✅ Using model: {model_name}")
-                break
-            except Exception as e:
-                print(f"⚠️ Model {model_name} not available: {str(e)[:100]}")
-                continue
-        
-        if not model:
-            print("❌ No working Gemini model found")
-            return {
-                "error": "No available Gemini model",
-                "headline": news_data.get('title', 'Error'),
-                "original_source": news_data.get('source', '')
-            }
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""
         Transform this news article into an engaging, well-structured piece:
