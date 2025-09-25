@@ -44,9 +44,13 @@ jobs:
         
     - name: Create issue
       run: |
+        # Create the label if it doesn't exist (ignore errors if it already exists)
+        gh label create "news-bot" --description "Automated news bot" --color "0E8A16" || true
+        
+        # Create the issue with the label
         gh issue create \
-          --title "News Bot Run ${{ github.run_number }}" \
-          --body "Generated news articles for: ${{ inputs.keyword || 'artificial intelligence' }}" \
+          --title "📰 News Bot Run ${{ github.run_number }}" \
+          --body "Generated news articles for: **${{ inputs.keyword || 'artificial intelligence' }}**" \
           --label "news-bot"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
