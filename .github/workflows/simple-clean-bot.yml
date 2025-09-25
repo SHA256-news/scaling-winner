@@ -1,0 +1,52 @@
+name: Simple Clean News Bot
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      keyword:
+        description: 'Search keyword'
+        required: false
+        default: 'artificial intelligence'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  news-bot:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        pip install google-generativeai eventregistry
+        
+    - name: Run news bot
+      env:
+        EVENTREGISTRY_API_KEY: ${{ secrets.EVENTREGISTRY_API_KEY }}
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        INPUT_KEYWORD: ${{ inputs.keyword || 'artificial intelligence' }}
+      run: python examples/news_bot_clean.py
+      
+    - name: Upload articles
+      uses: actions/upload-artifact@v4
+      with:
+        name: news-${{ github.run_number }}
+        path: "*.md"
+        
+    - name: Create issue
+      run: |
+        gh issue create \
+          --title "News Bot Run ${{ github.run_number }}" \
+          --body "Generated news articles for: ${{ inputs.keyword || 'artificial intelligence' }}" \
+          --label "news-bot"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
