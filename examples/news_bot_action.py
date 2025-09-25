@@ -185,6 +185,8 @@ def save_article_to_markdown(article: Dict, filename: str = None) -> str:
         filename = f"{safe_title}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
     
     content = f"""# {article.get('headline', 'Generated Article')}
+    # Pre-build conclusion section to avoid backslashes in f-string
+    conclusion_section = f"## Conclusion\n\n{article.get('conclusion', '')}" if article.get('conclusion') else ""
 
 **Generated:** {article.get('generated_at', 'N/A')}  
 **Source:** {article.get('original_source', 'N/A')}  
@@ -201,7 +203,7 @@ def save_article_to_markdown(article: Dict, filename: str = None) -> str:
 
 {article.get('body', 'N/A')}
 
-{("## Conclusion\n\n" + article.get('conclusion', '')) if article.get('conclusion') else ""}
+{conclusion_section}
 
 ---
 
