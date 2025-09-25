@@ -32,6 +32,11 @@ on:
           - sports
           - politics
 
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
 jobs:
   generate-news:
     runs-on: ubuntu-latest

@@ -13,7 +13,12 @@ from typing import List, Dict, Optional
 
 try:
     import google.generativeai as genai
-    from eventregistry import *
+    from eventregistry import EventRegistry, QueryArticles, QueryItems, CategoryItems, RequestArticlesInfo, ArticleInfoFlags
+    # Fallback imports in case some components are missing
+    try:
+        from eventregistry import QueryEvents, EventInfoFlags, RequestEventsInfo
+    except ImportError:
+        QueryEvents = EventInfoFlags = RequestEventsInfo = None
 except ImportError as e:
     print(f"❌ Missing required packages: {e}")
     print("Install with: pip install google-generativeai eventregistry")
