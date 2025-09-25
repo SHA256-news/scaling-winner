@@ -1,10 +1,23 @@
-name: Clean News Bot Test
+name: Clean News Bot with Issues
 
 on:
-  workflow_dispatch:  # Manual trigger only
+  workflow_dispatch:
+    inputs:
+      keyword:
+        description: 'News search keyword'
+        required: false
+        default: 'artificial intelligence'
+      max_articles:
+        description: 'Maximum articles to generate'
+        required: false
+        default: '3'
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
-  test-clean-bot:
+  clean-news-bot:
     runs-on: ubuntu-latest
     
     steps:
@@ -20,15 +33,32 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r clean_requirements.txt
+        pip install requests  # for GitHub API
         
-    - name: Test clean news bot dependencies
+    - name: Test dependencies first
       env:
         EVENTREGISTRY_API_KEY: ${{ secrets.EVENTREGISTRY_API_KEY }}
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       run: python3 test_bot.py
       
-    - name: Run functional clean news bot
+    - name: Run Clean News Bot with Issue Creation
       env:
         EVENTREGISTRY_API_KEY: ${{ secrets.EVENTREGISTRY_API_KEY }}
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-      run: python3 src/clean_functional_news_bot.py
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        INPUT_KEYWORD: ${{ inputs.keyword || 'artificial intelligence' }}
+        MAX_ARTICLES: ${{ inputs.max_articles || '3' }}
+      run: |
+        python3 src/clean_functional_news_bot_with_issues.py \
+          --keyword "$INPUT_KEYWORD" \
+          --max-articles "$MAX_ARTICLES"
+      
+    - name: Upload generated articles
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: clean-news-articles-${{ github.run_number }}
+        path: "*.md"
+        retention-days: 30
