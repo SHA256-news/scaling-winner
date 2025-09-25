@@ -42,15 +42,52 @@ jobs:
         name: news-${{ github.run_number }}
         path: "*.md"
         
-    - name: Create issue
+    - name: Debug and create issue
       run: |
-        # Create the label if it doesn't exist (ignore errors if it already exists)
+        # Create label
         gh label create "news-bot" --description "Automated news bot" --color "0E8A16" || true
         
-        # Create the issue with the label
-        gh issue create \
-          --title "📰 News Bot Run ${{ github.run_number }}" \
-          --body "Generated news articles for: **${{ inputs.keyword || 'artificial intelligence' }}**" \
-          --label "news-bot"
+        # Debug: Check what files were created
+        echo "=== DEBUG: Files in current directory ==="
+        ls -la
+        echo "=== DEBUG: Looking for .md files ==="
+        ls -la *.md || echo "No .md files found"
+        
+        # Check if articles were generated
+        if ls *.md 1> /dev/null 2>&1; then
+          echo "Articles found! Creating detailed issue..."
+          
+          # Create issue with first article content
+          FIRST_FILE=$(ls *.md | head -1)
+          echo "Using file: $FIRST_FILE"
+          
+          # Create issue body with article content
+          {
+            echo "# 📰 News Bot Results"
+            echo ""
+            echo "**Keyword:** ${{ inputs.keyword || 'artificial intelligence' }}"
+            echo "**Run:** ${{ github.run_number }}"
+            echo "**Files generated:** $(ls *.md | wc -l)"
+            echo ""
+            echo "## Generated Article"
+            echo ""
+            echo '```markdown'
+            head -50 "$FIRST_FILE"
+            echo '```'
+            echo ""
+            echo "[Download all articles](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } > issue_body.md
+          
+          gh issue create \
+            --title "📰 News: ${{ inputs.keyword || 'artificial intelligence' }} (#${{ github.run_number }})" \
+            --body-file issue_body.md \
+            --label "news-bot"
+        else
+          echo "No articles generated. Creating error issue..."
+          gh issue create \
+            --title "❌ News Bot Failed (Run ${{ github.run_number }})" \
+            --body "No articles were generated for: ${{ inputs.keyword || 'artificial intelligence' }}. Check the logs for errors." \
+            --label "news-bot"
+        fi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
