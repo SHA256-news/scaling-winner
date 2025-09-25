@@ -1,0 +1,4 @@
+# CLEAN NEWS BOT - Using REAL packages that actually exist
+google-generativeai>=0.8.0
+eventregistry==9.1
+python-dotenv
