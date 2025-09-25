@@ -1,4 +1,17 @@
-google-generativeai>=0.3.0
+# AI News Bot Requirements
+# Core dependencies for the news bot functionality
+
+# Google Gemini AI
+google-generativeai>=0.8.0
+
+# EventRegistry news API  
 eventregistry>=9.3.0
+
+# HTTP requests for GitHub API
+requests>=2.31.0
+
+# Environment variables (optional)
 python-dotenv>=1.0.0
+
+# Development tools (optional)
 jupyter>=1.0.0
