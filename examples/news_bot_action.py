@@ -201,7 +201,7 @@ def save_article_to_markdown(article: Dict, filename: str = None) -> str:
 
 {article.get('body', 'N/A')}
 
-{f"## Conclusion\\n\\n{article.get('conclusion', '')}" if article.get('conclusion') else ""}
+{("## Conclusion\n\n" + article.get('conclusion', '')) if article.get('conclusion') else ""}
 
 ---
 
